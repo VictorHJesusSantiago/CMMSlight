@@ -1,4 +1,3 @@
--- Users / technicians
 CREATE TABLE app_user (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(150) NOT NULL,
@@ -8,7 +7,6 @@ CREATE TABLE app_user (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
--- Suppliers of parts/services
 CREATE TABLE supplier (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(150) NOT NULL,
@@ -19,14 +17,12 @@ CREATE TABLE supplier (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
--- Asset type / category (motor, bomba, painel eletrico, etc.)
 CREATE TABLE asset_type (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(120) NOT NULL UNIQUE,
     description     TEXT
 );
 
--- Physical assets / equipment, supports hierarchy (parent-child, e.g. line -> machine -> component)
 CREATE TABLE asset (
     id              BIGSERIAL PRIMARY KEY,
     code            VARCHAR(50)  NOT NULL UNIQUE,
@@ -46,7 +42,6 @@ CREATE TABLE asset (
 CREATE INDEX idx_asset_type ON asset(asset_type_id);
 CREATE INDEX idx_asset_parent ON asset(parent_asset_id);
 
--- Reusable inspection/maintenance checklist templates
 CREATE TABLE checklist_template (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(150) NOT NULL,
@@ -61,16 +56,15 @@ CREATE TABLE checklist_item (
 );
 CREATE INDEX idx_checklist_item_template ON checklist_item(checklist_template_id);
 
--- Preventive maintenance plans, tied to an asset or a whole asset type, time- or usage-based
 CREATE TABLE maintenance_plan (
     id                      BIGSERIAL PRIMARY KEY,
     name                    VARCHAR(150) NOT NULL,
     asset_id                BIGINT REFERENCES asset(id),
     asset_type_id           BIGINT REFERENCES asset_type(id),
     checklist_template_id   BIGINT REFERENCES checklist_template(id),
-    frequency_type          VARCHAR(20) NOT NULL, -- TIME, USAGE
-    frequency_value         INT NOT NULL,         -- days, or usage units (hours/cycles)
-    frequency_unit          VARCHAR(20),          -- DAYS, HOURS, CYCLES...
+    frequency_type          VARCHAR(20) NOT NULL,
+    frequency_value         INT NOT NULL,
+    frequency_unit          VARCHAR(20),
     active                  BOOLEAN NOT NULL DEFAULT TRUE,
     last_generated_at       TIMESTAMPTZ,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -79,14 +73,13 @@ CREATE TABLE maintenance_plan (
 CREATE INDEX idx_plan_asset ON maintenance_plan(asset_id);
 CREATE INDEX idx_plan_asset_type ON maintenance_plan(asset_type_id);
 
--- Work orders (ordens de servico)
 CREATE TABLE work_order (
     id                  BIGSERIAL PRIMARY KEY,
     code                VARCHAR(50) NOT NULL UNIQUE,
     asset_id            BIGINT NOT NULL REFERENCES asset(id),
     maintenance_plan_id BIGINT REFERENCES maintenance_plan(id),
-    type                VARCHAR(20)  NOT NULL, -- PREVENTIVE, CORRECTIVE, PREDICTIVE
-    status              VARCHAR(20)  NOT NULL DEFAULT 'OPEN', -- OPEN, SCHEDULED, IN_PROGRESS, DONE, CANCELLED
+    type                VARCHAR(20)  NOT NULL,
+    status              VARCHAR(20)  NOT NULL DEFAULT 'OPEN',
     priority            VARCHAR(20)  NOT NULL DEFAULT 'MEDIUM',
     title               VARCHAR(200) NOT NULL,
     description         TEXT,
@@ -103,7 +96,6 @@ CREATE INDEX idx_wo_asset ON work_order(asset_id);
 CREATE INDEX idx_wo_status ON work_order(status);
 CREATE INDEX idx_wo_plan ON work_order(maintenance_plan_id);
 
--- Result of running a checklist against a specific work order
 CREATE TABLE work_order_checklist_result (
     id                  BIGSERIAL PRIMARY KEY,
     work_order_id       BIGINT NOT NULL REFERENCES work_order(id) ON DELETE CASCADE,
@@ -113,7 +105,6 @@ CREATE TABLE work_order_checklist_result (
     UNIQUE (work_order_id, checklist_item_id)
 );
 
--- Failure/incident history, used to compute MTBF/MTTR
 CREATE TABLE failure_history (
     id                  BIGSERIAL PRIMARY KEY,
     asset_id            BIGINT NOT NULL REFERENCES asset(id),
@@ -126,7 +117,6 @@ CREATE TABLE failure_history (
 );
 CREATE INDEX idx_failure_asset ON failure_history(asset_id);
 
--- Spare parts / inventory
 CREATE TABLE part (
     id              BIGSERIAL PRIMARY KEY,
     code            VARCHAR(50) NOT NULL UNIQUE,
@@ -138,7 +128,6 @@ CREATE TABLE part (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Parts consumed by a work order
 CREATE TABLE work_order_part (
     id              BIGSERIAL PRIMARY KEY,
     work_order_id   BIGINT NOT NULL REFERENCES work_order(id) ON DELETE CASCADE,
@@ -147,11 +136,10 @@ CREATE TABLE work_order_part (
     UNIQUE (work_order_id, part_id)
 );
 
--- Simple IoT sensor readings tied to an asset, feeding predictive maintenance
 CREATE TABLE sensor_reading (
     id              BIGSERIAL PRIMARY KEY,
     asset_id        BIGINT NOT NULL REFERENCES asset(id),
-    sensor_type     VARCHAR(50) NOT NULL, -- TEMPERATURE, VIBRATION, PRESSURE...
+    sensor_type     VARCHAR(50) NOT NULL,
     value           NUMERIC(14,4) NOT NULL,
     unit            VARCHAR(20),
     recorded_at     TIMESTAMPTZ NOT NULL DEFAULT now()

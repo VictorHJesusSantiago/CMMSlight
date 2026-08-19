@@ -129,10 +129,8 @@ public class WorkOrderChecklistService {
                 }
             }
             case MULTIPLE_CHOICE -> {
-                // opcoes validas ja restringidas na interface; validacao extra e responsabilidade do frontend
             }
             case TEXT -> {
-                // qualquer texto e valido
             }
         }
     }
